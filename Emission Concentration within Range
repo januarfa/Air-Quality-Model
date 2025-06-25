@@ -1,0 +1,52 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from math import pi
+import ipywidgets as widgets
+from IPython.display import display
+
+# Fungsi Gaussian Plume
+def compute_concentration(Q, u, H_stack, D_stack, v_stack, T_stack, T_amb):
+    x = np.linspace(100, 3000, 100)
+    y = np.linspace(-1000, 1000, 100)
+    X, Y = np.meshgrid(x, y)
+
+    sigma_y = 0.08 * X * (1 + 0.0001 * X) ** -0.5
+    sigma_z = 0.06 * X * (1 + 0.0015 * X) ** -0.5
+    sigma_y[sigma_y == 0] = 0.01
+    sigma_z[sigma_z == 0] = 0.01
+
+    delta_h = (1.5 * D_stack * v_stack * np.sqrt(T_stack / T_amb)) / u
+    H_eff = H_stack + delta_h
+
+    C = (Q / (2 * pi * u * sigma_y * sigma_z)) * \
+        np.exp(-Y**2 / (2 * sigma_y**2)) * \
+        np.exp(-H_eff**2 / (2 * sigma_z**2))
+
+    return X, Y, C * 1000  # µg/m³
+
+# Fungsi Plot
+def plot_concentration(Q, u, H_stack, D_stack, v_stack, T_stack_c, T_amb_c):
+    T_stack = T_stack_c + 273.15
+    T_amb = T_amb_c + 273.15
+    X, Y, C_ug = compute_concentration(Q, u, H_stack, D_stack, v_stack, T_stack, T_amb)
+
+    plt.figure(figsize=(10, 6))
+    cp = plt.contourf(X, Y, C_ug, levels=30, cmap='viridis')
+    plt.colorbar(cp, label='Konsentrasi SO₂ (µg/m³)')
+    plt.xlabel('Jarak dari Cerobong (m)')
+    plt.ylabel('Jarak Menyamping dari Arah Angin (m)')
+    plt.title(f'Peta Kontur 2D Emisi SO₂ - Q={Q:.2f} g/s')
+    plt.grid(True)
+    plt.show()
+
+# Slider Interaktif
+widgets.interact(
+    plot_concentration,
+    Q=widgets.FloatSlider(value=0.064, min=0.01, max=10.0, step=0.01, description='Emisi Q (g/s)'),
+    u=widgets.FloatSlider(value=2.0, min=0.5, max=5.0, step=0.1, description='Angin u (m/s)'),
+    H_stack=widgets.IntSlider(value=70, min=30, max=100, step=1, description='Tinggi Cerobong (m)'),
+    D_stack=widgets.FloatSlider(value=1.8, min=0.5, max=3.0, step=0.1, description='Diameter (m)'),
+    v_stack=widgets.FloatSlider(value=12.0, min=2.0, max=20.0, step=0.5, description='V Keluar (m/s)'),
+    T_stack_c=widgets.IntSlider(value=200, min=100, max=300, step=5, description='T. Emisi (°C)'),
+    T_amb_c=widgets.IntSlider(value=28, min=10, max=40, step=1, description='T. Ambien (°C)')
+);
